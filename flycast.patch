@@ -1,0 +1,193 @@
+diff --git a/core/deps/xxHash/xxh3.h b/core/deps/xxHash/xxh3.h
+index 9e3e88ad..b28d0f3c 100644
+--- a/core/deps/xxHash/xxh3.h
++++ b/core/deps/xxHash/xxh3.h
+@@ -1,3 +1,5 @@
++#undef __ARM_NEON__
++#undef __ARM_NEON
+ /*
+  * xxHash - Extremely Fast Hash algorithm
+  * Development source file for `xxh3`
+diff --git a/core/khronos/EGL/eglplatform.h b/core/khronos/EGL/eglplatform.h
+index a4b309c1..bf9ec0bf 100644
+--- a/core/khronos/EGL/eglplatform.h
++++ b/core/khronos/EGL/eglplatform.h
+@@ -2,30 +2,30 @@
+ #define __eglplatform_h_
+ 
+ /*
+- ** Copyright (c) 2007-2013 The Khronos Group Inc.
+- **
+- ** Permission is hereby granted, free of charge, to any person obtaining a
+- ** copy of this software and/or associated documentation files (the
+- ** "Materials"), to deal in the Materials without restriction, including
+- ** without limitation the rights to use, copy, modify, merge, publish,
+- ** distribute, sublicense, and/or sell copies of the Materials, and to
+- ** permit persons to whom the Materials are furnished to do so, subject to
+- ** the following conditions:
+- **
+- ** The above copyright notice and this permission notice shall be included
+- ** in all copies or substantial portions of the Materials.
+- **
+- ** THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+- ** EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+- ** MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+- ** IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+- ** CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+- ** TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+- ** MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
+- */
++** Copyright (c) 2007-2016 The Khronos Group Inc.
++**
++** Permission is hereby granted, free of charge, to any person obtaining a
++** copy of this software and/or associated documentation files (the
++** "Materials"), to deal in the Materials without restriction, including
++** without limitation the rights to use, copy, modify, merge, publish,
++** distribute, sublicense, and/or sell copies of the Materials, and to
++** permit persons to whom the Materials are furnished to do so, subject to
++** the following conditions:
++**
++** The above copyright notice and this permission notice shall be included
++** in all copies or substantial portions of the Materials.
++**
++** THE MATERIALS ARE PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
++** EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
++** MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
++** IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
++** CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
++** TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
++** MATERIALS OR THE USE OR OTHER DEALINGS IN THE MATERIALS.
++*/
+ 
+ /* Platform-specific types and definitions for egl.h
+- * $Revision: 23432 $ on $Date: 2013-10-09 00:57:24 -0700 (Wed, 09 Oct 2013) $
++ * $Revision: 30994 $ on $Date: 2015-04-30 13:36:48 -0700 (Thu, 30 Apr 2015) $
+  *
+  * Adopters may modify khrplatform.h and this file to suit their platform.
+  * You are encouraged to submit all modifications to the Khronos group so that
+@@ -83,17 +83,36 @@ typedef int   EGLNativeDisplayType;
+ typedef void *EGLNativeWindowType;
+ typedef void *EGLNativePixmapType;
+ 
+-#elif defined(__ANDROID__) || defined(ANDROID)
++#elif defined(WL_EGL_PLATFORM)
++
++typedef struct wl_display     *EGLNativeDisplayType;
++typedef struct wl_egl_pixmap  *EGLNativePixmapType;
++typedef struct wl_egl_window  *EGLNativeWindowType;
++
++#elif defined(__GBM__)
+ 
+-#include <android/native_window.h>
++typedef struct gbm_device  *EGLNativeDisplayType;
++typedef struct gbm_bo      *EGLNativePixmapType;
++typedef void               *EGLNativeWindowType;
+ 
++#elif defined(__ANDROID__) || defined(ANDROID)
++
++struct ANativeWindow;
+ struct egl_native_pixmap_t;
+ 
+ typedef struct ANativeWindow*           EGLNativeWindowType;
+ typedef struct egl_native_pixmap_t*     EGLNativePixmapType;
+ typedef void*                           EGLNativeDisplayType;
+ 
+-#elif defined(__unix__)
++#elif defined(__unix__) || defined(__APPLE__)
++
++#if defined(MESA_EGL_NO_X11_HEADERS)
++
++typedef void            *EGLNativeDisplayType;
++typedef khronos_uintptr_t EGLNativePixmapType;
++typedef khronos_uintptr_t EGLNativeWindowType;
++
++#else
+ 
+ /* X11 (tentative)  */
+ #include <X11/Xlib.h>
+@@ -103,6 +122,14 @@ typedef Display *EGLNativeDisplayType;
+ typedef Pixmap   EGLNativePixmapType;
+ typedef Window   EGLNativeWindowType;
+ 
++#endif /* MESA_EGL_NO_X11_HEADERS */
++
++#elif __HAIKU__
++#include <kernel/image.h>
++typedef void				*EGLNativeDisplayType;
++typedef khronos_uintptr_t	 EGLNativePixmapType;
++typedef khronos_uintptr_t	 EGLNativeWindowType;
++
+ #else
+ #error "Platform not recognized"
+ #endif
+@@ -122,4 +149,12 @@ typedef EGLNativeWindowType  NativeWindowType;
+  */
+ typedef khronos_int32_t EGLint;
+ 
+-#endif /* __eglplatform_h */
+\ No newline at end of file
++
++/* C++ / C typecast macros for special EGL handle values */
++#if defined(__cplusplus)
++#define EGL_CAST(type, value) (static_cast<type>(value))
++#else
++#define EGL_CAST(type, value) ((type) (value))
++#endif
++
++#endif /* __eglplatform_h */
+diff --git a/core/linux-dist/main.cpp b/core/linux-dist/main.cpp
+index 143ec84c..2ca64918 100644
+--- a/core/linux-dist/main.cpp
++++ b/core/linux-dist/main.cpp
+@@ -42,6 +42,8 @@
+ #include "profiler/profiler.h"
+ #endif
+ 
++#include <sched.h>
++
+ #if defined(USE_JOYSTICK)
+ 	/* legacy joystick input */
+ 	static int joystick_fd = -1; // Joystick file descriptor
+@@ -294,6 +296,17 @@ int main(int argc, char* argv[])
+ 		signal(SIGSEGV, clean_exit);
+ 		signal(SIGKILL, clean_exit);
+ 	#endif
++   // PATCH RK3399
++   cpu_set_t cpu_set;
++   CPU_ZERO(&cpu_set);
++   CPU_SET(4, &cpu_set);
++   CPU_SET(5, &cpu_set);
++
++   if (sched_setaffinity(0, sizeof(cpu_set), &cpu_set) < 0) {
++       perror("sched_setaffinity");
++   }
++   //printf("setaffinity=%d\n", temp);
++
+ 
+ 	/* Set directories */
+ 	set_user_config_dir(find_user_config_dir());
+diff --git a/shell/linux/Makefile b/shell/linux/Makefile
+index d8d1ee16..5cd82522 100644
+--- a/shell/linux/Makefile
++++ b/shell/linux/Makefile
+@@ -28,7 +28,7 @@ ASFLAGS :=
+ LDFLAGS ?=
+ INCS ?=
+ LIBS ?=
+-CFLAGS :=
++CFLAGS ?=
+ CXXFLAGS :=
+ 
+ ifneq (, $(filter $(shell uname -s), FreeBSD OpenBSD NetBSD DragonFly))
+@@ -296,9 +296,9 @@ endif
+ RZDCY_SRC_DIR = $(LOCAL_PATH)/../../core
+ include $(RZDCY_SRC_DIR)/core.mk
+ 
+-LDFLAGS += -g -Wl,-Map,$(notdir $@).map,--gc-sections -Wl,-O3 -Wl,--sort-common -fopenmp
++LDFLAGS += -g -Wl,-Map,$(notdir $@).map,--gc-sections -Wl,-O3 -Wl,--sort-common #-fopenmp
+ 
+-CFLAGS += $(RZDCY_CFLAGS) -g -O3 -D NDEBUG -c -fopenmp #-D NO_REND
++CFLAGS += $(RZDCY_CFLAGS) -g -O3 -D NDEBUG -c #-fopenmp #-D NO_REND
+ CFLAGS += -frename-registers -fno-strict-aliasing
+ CFLAGS += -ffast-math -ftree-vectorize  -Wno-unused-result
+ 
