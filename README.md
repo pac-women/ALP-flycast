@@ -27,6 +27,8 @@ CC_PREFIX=aarch64-linux- CFLAGS="-DTARGET_NO_OPENMP=1  -DMESA_EGL_NO_X11_HEADERS
 ## Note:
 - How to fix this issue
 > /opt/rk3399_toolchain/bin/../libexec/gcc/aarch64-buildroot-linux-gnu/8.4.0/cc1plus: error while loading shared libraries: libmpfr.so.4: cannot open shared object file: No such file or directory
+
+-> Could be solved by creating a softlink for target
 ```
 sudo ln -s /usr/lib/x86_64-linux-gnu/libmpfr.so.6 /usr/lib/x86_64-linux-gnu/libmpfr.so.4
 ```
