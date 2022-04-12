@@ -1,9 +1,9 @@
 # ALP flycast
 
-How to build standalone flycast (reicast.elf)
+How To Build Standalone Flycast
 
-- source: https://github.com/flyinghead/flycast
-- build step
+- Source: https://github.com/flyinghead/flycast
+- Build steps
 ```	
 # prepare
 git clone https://github.com/flyinghead/flycast.git
